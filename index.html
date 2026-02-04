@@ -1,0 +1,81 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Mayem Mood</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  body { font-family: sans-serif; text-align: center; transition: background 0.5s; }
+  #emoji { font-size: 80px; margin: 20px; display: block; }
+  #advice { font-size: 20px; margin: 20px; }
+</style>
+</head>
+<body>
+<h1>Mayem Mood</h1>
+
+<label>Choisis ton humeur :</label>
+<select id="mood">
+  <option value="">-- Sélectionner --</option>
+  <option value="happy">😊 Heureux(se)</option>
+  <option value="sad">😢 Triste</option>
+  <option value="stressed">😫 Stressé(e)</option>
+  <option value="tired">😴 Fatigué(e)</option>
+</select>
+
+<br><br>
+
+<label>Je souhaite :</label>
+<input type="text" id="wish" placeholder="Ex : me sentir motivé, calme, joyeux..." />
+
+<br><br>
+
+<button onclick="getAdvice()">Améliore ton mood</button>
+
+<span id="emoji"></span>
+<div id="advice"></div>
+
+<script>
+// Couleurs et emojis
+const emojiList = { happy: "😊", sad: "😢", stressed: "😫", tired: "😴" };
+const bgColors = { happy:"#FFD580", sad:"#A0C4FF", stressed:"#FFADAD", tired:"#BDB2FF" };
+let history = JSON.parse(localStorage.getItem("mayemMoodHistory")) || [];
+
+// Fonction principale : appelle le serveur sécurisé pour obtenir un conseil IA
+async function getAdvice(){
+  const mood = document.getElementById("mood").value;
+  const wish = document.getElementById("wish").value.trim();
+  if(!mood || !wish){ alert("Sélectionne ton humeur et écris ce que tu souhaites!"); return; }
+
+  try {
+    const res = await fetch("http://localhost:3000/getAdvice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mood, wish })
+    });
+    const data = await res.json();
+    const advice = data.advice;
+
+    document.getElementById("advice").innerText = "💡 " + advice;
+    document.getElementById("emoji").innerText = emojiList[mood];
+    document.body.style.background = bgColors[mood];
+
+    // Historique
+    const date = new Date();
+    history.unshift({mood: emojiList[mood], wish: wish, advice: advice, time: date.toLocaleString()});
+    localStorage.setItem("mayemMoodHistory", JSON.stringify(history));
+
+  } catch (err) {
+    console.error(err);
+    alert("Erreur serveur. Essaye plus tard.");
+  }
+}
+
+// Service Worker pour offline
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(() => console.log('Service Worker enregistré'))
+    .catch((err) => console.log('Erreur Service Worker:', err));
+}
+</script>
+</body>
+</html>
